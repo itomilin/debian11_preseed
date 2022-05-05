@@ -129,7 +129,7 @@ d-i partman-auto/expert_recipe string \
         method{ efi }                 \
         format{ }                     \
     . \
-    4096 30  4096    ext4           \
+    51200 30  51200    ext4           \
         $primary{ }                   \
         label{ root }                 \
         method{ format }              \
