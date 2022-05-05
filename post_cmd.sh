@@ -49,13 +49,11 @@ systemd_networkd_install () {
     rm /etc/network/interfaces
 
     # Setup system-networkd.
-    printf '%s\n%s\n%s\n%s\n%s\n%s\n' \
+    printf '%s\n%s\n%s\n%s\n' \
            "[Match]"                  \
-           "Name="                    \
+           "Name=${IFACE}"            \
            "[Network]"                \
-           "Address=/24"              \
-           "Gateway="                 \
-           "DNS="                     \
+           "DHCP=true"                \           
            > /etc/systemd/network/01_lan.network
 
     # Enable daemon.
@@ -71,7 +69,7 @@ final_install () {
     echo "${HOSTNAME}" > /etc/hostname
     sed -i "2s/debian/${HOSTNAME}/g" /etc/hosts
     # TMP FIX.
-    sed -i "2s/.*/127.0.1.1     ${HOSTNAME}/g" /etc/hosts
+    #sed -i "2s/.*/127.0.1.1     ${HOSTNAME}/g" /etc/hosts
     # Remove deb-src repos.
     sed -i "/^deb-src/s/^/#/" /etc/apt/sources.list
 }
