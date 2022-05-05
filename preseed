@@ -73,12 +73,12 @@ d-i mirror/suite          select stable
 
 
 ################################ USERS #########################################
-# CREATE ROOT
+# SUPERUSER
 d-i passwd/root-login            boolean true
 d-i passwd/make-user             boolean true
 d-i passwd/root-password-crypted password $6$saltlinux$frkzLVDZRsEt.sJoN3Yfp0yBKO9OguYeGfUf1Cl4LgurbzQfuWuYtChHeB6.ENmn5OUedrmKed9B9LOAHG3dq0
 
-# USER niias
+# USER
 d-i passwd/user-fullname         string   tomilin
 d-i passwd/username              string   tomilin
 d-i passwd/user-password-crypted password $6$saltlinux$RvnT6pb.7v1/UdfMyS6.KjhW5/UPntbbV86pdVrR2WnhGMjKkAQAFevRw5NFBUTI/u8hA1uuow9y5HZ5LyGly.
@@ -214,7 +214,7 @@ d-i preseed/late_command string \
     in-target /bin/sh -c "curl -sL \
         https://raw.githubusercontent.com/itomilin/debian11_preseed/main/post_cmd.sh \
         -o /root/post_cmd.sh && chmod +x /root/post_cmd.sh"; \
-    in-target /bin/bash -c "/root/post_cmd.sh 'tomilin'";
+    in-target /bin/bash -c "/root/post_cmd.sh 'debian'";
 ################################################################################
 
 
