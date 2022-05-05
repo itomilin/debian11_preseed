@@ -29,34 +29,33 @@ d-i keyboard-configuration/optionscode string grp:caps_toggle,grp_led:scroll
 
 
 ################################ Networking ####################################
-#d-i netcfg/enable             boolean true
 #d-i netcfg/dhcp_failed        note
 #d-i netcfg/dhcp_options       select  Configure network manually
 
-# DHCP
-#d-i netcfg/choose_interface select  auto
-#d-i netcfg/dhcp_timeout     string  2
-#d-i netcfg/get_domain       string
-#d-i netcfg/confirm_static   boolean false
-#d-i netcfg/disable_dhcp     boolean false
+# DHCP.
+d-i netcfg/choose_interface select  auto
+d-i netcfg/dhcp_timeout     string  2
+d-i netcfg/get_domain       string
+d-i netcfg/confirm_static   boolean false
+d-i netcfg/disable_dhcp     boolean false
 ##d-i netcfg/link_wait_timeout  string  3
 ##d-i netcfg/dhcp_timeout       string  25
 ##d-i netcfg/dhcpv6_timeout     string  15
 ##d-i netcfg/disable_autoconfig boolean false
 
-# Static
-d-i netcfg/choose_interface   select  auto
-d-i netcfg/disable_autoconfig boolean true
-d-i netcfg/get_ipaddress      string  192.168.90.235
-d-i netcfg/get_netmask        string  255.255.255.0
-d-i netcfg/get_gateway        string  192.168.90.1
-d-i netcfg/get_nameservers    string  192.168.90.1
-d-i netcfg/confirm_static     boolean true
+# Static.
+#d-i netcfg/choose_interface   select  auto
+#d-i netcfg/disable_autoconfig boolean true
+#d-i netcfg/get_ipaddress      string  192.168.12.240
+#d-i netcfg/get_netmask        string  255.255.255.0
+#d-i netcfg/get_gateway        string  192.168.12.2
+#d-i netcfg/get_nameservers    string  192.168.12.2
+#d-i netcfg/confirm_static     boolean true
 
 ## Preseed file bug, невозможно задавать собственный hostname этой строкой
 ## Hostname by default is debian
 d-i netcfg/get_domain   string
-d-i netcfg/get_hostname string devbox2
+d-i netcfg/get_hostname string debian
 #d-i netcfg/hostname         string
 #d-i netcfg/wireless_wep     string
 ################################################################################
@@ -77,16 +76,16 @@ d-i mirror/suite          select stable
 # CREATE ROOT
 d-i passwd/root-login            boolean true
 d-i passwd/make-user             boolean true
-d-i passwd/root-password-crypted password $6$saltlinux$aMM3ESmf2.FNqouUT.vGO98tt49NLIYRXCq3hHYmgJ57rN5v3rf8LlVth42vSgN6CSVbBDz8OSETyg81.w2f./
+d-i passwd/root-password-crypted password $6$saltlinux$frkzLVDZRsEt.sJoN3Yfp0yBKO9OguYeGfUf1Cl4LgurbzQfuWuYtChHeB6.ENmn5OUedrmKed9B9LOAHG3dq0
 
 # USER niias
-d-i passwd/user-fullname         string   niias
-d-i passwd/username              string   niias
-d-i passwd/user-password-crypted password $6$saltlinux$aMM3ESmf2.FNqouUT.vGO98tt49NLIYRXCq3hHYmgJ57rN5v3rf8LlVth42vSgN6CSVbBDz8OSETyg81.w2f./
+d-i passwd/user-fullname         string   tomilin
+d-i passwd/username              string   tomilin
+d-i passwd/user-password-crypted password $6$saltlinux$RvnT6pb.7v1/UdfMyS6.KjhW5/UPntbbV86pdVrR2WnhGMjKkAQAFevRw5NFBUTI/u8hA1uuow9y5HZ5LyGly.
 
 # GROUPS
-d-i passwd/user-default-groups string audio cdrom dip floppy video plugdev \
-                                      netdev scanner bluetooth sudo \
+d-i passwd/user-default-groups string audio cdrom dip video plugdev \
+                                      netdev scanner bluetooth \
                                       systemd-journal dialout
 ################################################################################
 
@@ -99,6 +98,9 @@ d-i clock-setup/ntp        boolean true
 
 
 ################################ PATRTITIONING #################################
+# Force UEFI installation.
+d-i partman-efi/non_efi_system boolean true
+
 d-i partman-basicfilesystems/choose_label  string gpt
 d-i partman-basicfilesystems/default_label string gpt
 d-i partman-partitioning/choose_label      string gpt
@@ -106,31 +108,29 @@ d-i partman-partitioning/default_label     string gpt
 d-i partman/choose_label                   string gpt
 d-i partman/default_label                  string gpt
 
-# SET DEV DRIVE
-#d-i partman-auto/disk   string /dev/sda
-d-i partman-auto/disk   string /dev/nvme0n1p2
-d-i partman-auto/method string regular
+# SET FIRST DRIVE
+d-i partman/early_command string              \
+    BOOT_DEV=$(list-devices disk | head -1) ; \
+    debconf-set partman-auto/disk $BOOT_DEV
 
-# Very sensitive by format ( spaces e.t.c )
-## EFI
-## rootfs_ro
-## rootfs_rw
-## home_ro
-## home_rw
-## 1TB
-d-i partman-auto/choose_recipe select boot-root-all
+# EXT4
+d-i partman-auto/method string regular
+# LVM
+#d-i partman-auto/method string lvm
+# Remove old lvm partitioning.
+#d-i partman-lvm/device_remove_lvm boolean true
+
+d-i partman-auto/choose_recipe select atomic
 d-i partman-auto/expert_recipe string \
-boot-root-all ::                      \
-    512 30 512         fat32          \
+    512   30  512      fat32          \
         $primary{ }                   \
-        device{ sda }                 \
+        $reusemethod{ }               \
         $iflabel{ gpt }               \
         method{ efi }                 \
         format{ }                     \
     . \
-    1024000 30 1024000 ext4           \
+    4096 30  4096    ext4           \
         $primary{ }                   \
-        device{ sda }                 \
         label{ root }                 \
         method{ format }              \
         format{ }                     \
@@ -140,9 +140,8 @@ boot-root-all ::                      \
         options/discard{ discard }    \
         mountpoint{ / }               \
     . \
-    1024000 30 1024000 ext4           \
+    100   100 -1       ext4           \
         $primary{ }                   \
-        device{ sda }                 \
         label{ home }                 \
         method{ format }              \
         format{ }                     \
@@ -153,13 +152,13 @@ boot-root-all ::                      \
         mountpoint{ /home }           \
     .
 
-# Auto confirm unkomment to apply it
+# Auto confirm uncomment to apply it.
 d-i partman-partitioning/confirm_write_new_label boolean true
 d-i partman/choose_partition                     select  finish
 d-i partman/confirm                              boolean true
 d-i partman/confirm_nooverwrite                  boolean true
 
-# Skip question about not having swap partition
+# Skip question about not having swap partition.
 partman-basicfilesystems partman-basicfilesystems/no_swap boolean false
 ################################################################################
 
@@ -169,7 +168,8 @@ d-i apt-setup/non-free boolean true
 d-i apt-setup/contrib  boolean true
 
 d-i apt-setup/use_mirror      boolean true
-d-i apt-setup/services-select multiselect security, updates
+#d-i apt-setup/services-select multiselect security, updates
+d-i apt-setup/services-select multiselect updates
 
 d-i apt-setup/security_host                string  security.debian.org
 d-i debian-installer/allow_unauthenticated boolean false
@@ -181,23 +181,12 @@ d-i debian-installer/allow_unauthenticated boolean false
 tasksel tasksel/first multiselect standard, ssh-server
 
 # BASE PACKAGES
-d-i pkgsel/include                 string  aptitude apt-file apt-utils rsync vim git sudo \
-                                           software-properties-common gnupg2 build-essential \
-                                           python3-pip python3-numpy python3-dev pkg-config \
-                                           curl wget dkms net-tools nmap ethtool ptpd \
-                                           libssl-dev libncurses-dev psmisc \
-                                           ntp ntpdate expect bridge-utils gparted \
-                                           tcpdump lm-sensors linux-perf socat \
-                                           xorg zip unzip htop strace libfmt-dev \
-                                           apt-transport-https ca-certificates \
-                                           gnupg lsb-release can-utils pptpd \
-                                           libgl1-mesa-dev tree pass libglu1-mesa-dev \
-                                           firmware-linux-free firmware-amd-graphics \
-                                           firmware-intel-sound firmware-misc-nonfree \
-                                           firmware-realtek firmware-linux firmware-linux-nonfree \
-                                           intel-media-va-driver gcc make gparted \
-                                           flex bison libelf-dev dpkg-dev kmod bc \
-                                           cpio fakeroot xz-utils linux-source
+d-i pkgsel/include string  aptitude rsync vim git curl pcregrep \
+                           firmware-linux-free firmware-amd-graphics \
+                           firmware-intel-sound firmware-misc-nonfree \
+                           firmware-realtek firmware-linux firmware-linux-nonfree \
+                           intel-media-va-driver gcc make linux-headers-amd64 \
+                           linux-cpupower
 
 d-i popularity-contest/participate boolean false
 d-i pkgsel/upgrade                 select  full-upgrade
@@ -219,92 +208,14 @@ grub-installer grub-installer/multipath                        boolean true
 
 
 ################################ POSTINST ######################################
-#d-i preseed/late_command string \
-#
-##   Systemd-boot.
-#    in-target bootctl install; \
-#
-##   Create entries.
-#    in-target /bin/sh -c "printf '%s\n%s\n%s\n' 'default debian' \
-#                                                'timeout 1'      \
-#                                                'editor 1' > /boot/efi/loader/loader.conf"; \
-#
-##   Regular.
-#    in-target /bin/sh -c "printf '%s\n' 'title    debian' > /boot/efi/loader/entries/debian.conf"; \
-#    in-target /bin/sh -c "printf '%s\n' \"linux   /vmlinuz-ll\" >> /boot/efi/loader/entries/debian.conf"; \
-#    in-target /bin/sh -c "printf '%s\n' \"initrd  /initrd-ll\" >> /boot/efi/loader/entries/debian.conf"; \
-#    in-target /bin/sh -c "printf '%s\n' \"options root=$(blkid -o export /dev/sda2 | grep PARTUUID) rw quiet 8250.nr_uarts=16 nomodeset\" >> /boot/efi/loader/entries/debian.conf"; \
-#
-##   Sudo privileges.
-#    in-target /bin/sh -c "printf '%s\n' '%niias	ALL=(ALL:ALL) ALL' >> /etc/sudoers"; \
-#
-##   Fix hostname.
-#    in-target /bin/sh -c "echo devbox2 > /etc/hostname"; \
-#    in-target /bin/sh -c "sed -i -e '2s/debian/devbox2/g' /etc/hosts"; \
-#
-##   TMP FIX
-#    in-target /bin/sh -c "sed -i -e '2s/.*/127.0.1.1     devbox2/g' /etc/hosts"; \
-#
-##   Registry.
-#    in-target /bin/sh -c "sed -i '3i 10.0.1.236     registry.niias' /etc/hosts"; \
-#
-##   Remove deb-src repos.
-#    in-target /bin/sh -c "sed -i -e '/^deb-src/s/^/#/' /etc/apt/sources.list"; \
-#
-##   Resolve bb.niias
-#    in-target /bin/sh -c "mkdir -p /root/.ssh"; \
-#    in-target /bin/sh -c "ssh-keyscan bitbucket.org >> /root/.ssh/known_hosts"; \
-#    in-target /bin/sh -c "echo 'Host *' > /root/.ssh/config"; \
-#    in-target /bin/sh -c "echo 'StrictHostKeyChecking no' >> /root/.ssh/config"; \
-#    in-target /bin/sh -c "echo '-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn\nNhAAAAAwEAAQAAAQEAzkgU/L0+NU/+s8H5SlXGd6UT43YiZ7UXYss5qBfBZcyZwaOt4c6M\nncLM8vhpMkmcrORK35VyBeoyaiuAe1XWeUJKIPammW9MbYAlRChDo91YVqHByg3b4cxvDj\nuu3CiJGMdfV3VAOvV0gZ4zFVXDsU5uDhaxodumOKD5KcccETFejV7fGdXhYxmY5JJiSNA6\n/JCBhN9h8UV6Ujuv8goza0mihc+K60W+7wo4JBaTP2bKTPkLxChgetKVT4f1stzuPuGB8q\n+XQGyGwOkfys1kUKxtIybNgWfJ7CeOaljbBX2stQyfkZ3Fo0256lwCuOwN6UDwZHKhs6py\nyl+wvPsFYwAAA8je8Bwj3vAcIwAAAAdzc2gtcnNhAAABAQDOSBT8vT41T/6zwflKVcZ3pR\nPjdiJntRdiyzmoF8FlzJnBo63hzoydwszy+GkySZys5ErflXIF6jJqK4B7VdZ5Qkog9qaZ\nb0xtgCVEKEOj3VhWocHKDdvhzG8OO67cKIkYx19XdUA69XSBnjMVVcOxTm4OFrGh26Y4oP\nkpxxwRMV6NXt8Z1eFjGZjkkmJI0Dr8kIGE32HxRXpSO6/yCjNrSaKFz4rrRb7vCjgkFpM/\nZspM+QvEKGB60pVPh/Wy3O4+4YHyr5dAbIbA6R/KzWRQrG0jJs2BZ8nsJ45qWNsFfay1DJ\n+RncWjTbnqXAK47A3pQPBkcqGzqnLKX7C8+wVjAAAAAwEAAQAAAQEAu4wb0MI6SfxmJYcp\noSUlYehrkbX5h/LExWTiEesvQd/ot36afB/wBwtyjUG/WyJEWYjibi+Q0MHiflb45Knhar\nQTc67tP7lKcpA80aAOB3EafQFqkMtS7BOTsQwgajhMlYPHMlv/PtulxqdP6IjmeFFHjHWj\noPZ0RS5N+2b1JMbr39fKQkjiEf8n+ozNvLybxQYcUWTbW+FpqY6dmT5/OgAo3g7BVHGPco\nubeKGfxCvAmXBVVK+tqI9CBPNIboG3fKXZXrPe3mHqrXbMxZ4eZwSBXVEmOYSeL9hqUTix\nZo11FnIvxJCriVnRtcO4PpKRYDLrx83QKl/RAXkGrbLxiQAAAIBzRwxbxZ/aPmvoDHsiA3\nRqcb3Q3m/KNVov7pY1Yd0+QCWJliBZYb+DkH8kLTFBhDk96OCji/ZEqs/DY9ElCym8L+sg\nDTJ0pcHpbx6D8K6f9h0fAOdpH0dv7G4L5OgOVo2hRCCbYobSwuOyKEQaXjrD6H2e/Rhmmm\n8B7iPiuq1DdwAAAIEA+VNNLlC2qbhur35vg2PkSGlFWbSXN/lSe9N/nYjZNkojv/EHF0+h\ns4cb0GPRv9svciI17E/HYlGLgxas5dYp7LPCdA4HkpLbCYcm8XLLzjDz791+m7Fn3jlfSH\ntYj2mVGgS5njLvMEO5y4r3rPh52SsM8eLQIGBcmFBtwmEcSF8AAACBANPNye6Tbe8rhhZn\npBDkqZMpsXsjySAP7aSOALgHSybYYORlynGF+7MoZoGdP6WbFUQ31h0m0yejM2QpbRTdLy\nDqAE4TEbGnUoIay/Z/Yg2TXwCsZx6F7kOKTJjHLHNuXynPZzFxclogSmTcLbTXo4h0aDrM\neI9JsFrfXYZXHrF9AAAADnRvbWlsaW5AZGViaWFuAQIDBA==\n-----END OPENSSH PRIVATE KEY-----' > /root/.ssh/id_rsa"; \
-#    in-target /bin/sh -c "chmod 0700 /root/.ssh"; \
-#    in-target /bin/sh -c "chmod 0600 /root/.ssh/id_rsa"; \
-#
-## Disable networking.
-#    in-target /bin/sh -c "systemctl disable networking.service"; \
-#    in-target /bin/sh -c "mv /etc/network/interfaces /etc/network/interfaces.bak"; \
-#
-## Setup system-networkd.
-#    in-target /bin/sh -c "printf '%s\n%s\n' '[Match]' 'Name=eno1' > /etc/systemd/network/01_lan.network"; \
-#    in-target /bin/sh -c "printf '%s\n%s\n' '[Network]' 'Address=192.168.90.235/24' >> /etc/systemd/network/01_lan.network"; \
-#    in-target /bin/sh -c "printf '%s\n%s\n' 'DNS=192.168.90.235' 'Gateway=192.168.90.235' >> /etc/systemd/network/01_lan.network"; \
-#    in-target /bin/sh -c "systemctl enable systemd-networkd.service"; \
-#
-## Driver install N nouveau blacklist.
-#    in-target /bin/sh -c "wget \
-#    https://us.download.nvidia.com/XFree86/Linux-x86_64/470.86/NVIDIA-Linux-x86_64-510.54.run -P \
-#    /opt/nvidia/ && chmod +x /opt/nvidia/NVIDIA-Linux-x86_64-510.54.run"; \
-#    in-target /bin/sh -c "/opt/nvidia/NVIDIA-Linux-x86_64-510.54.run -a -q --ui=none --dkms"; \
-#    in-target /bin/sh -c "echo 'blacklist nouveau' > /etc/modprobe.d/blacklist-nvidia-nouveau.conf"; \
-#    in-target /bin/sh -c "echo 'options nouveau modeset=0' >> /etc/modprobe.d/blacklist-nvidia-nouveau.conf"; \
-#
-## Docker repo, don`t forget change codename storage.
-#    in-target /bin/sh -c "curl -fsSL \
-#    https://download.docker.com/linux/debian/gpg | gpg --dearmor -o \
-#    /usr/share/keyrings/docker-archive-keyring.gpg"; \
-#
-#    in-target /bin/sh -c "echo \
-#    'deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bullseye stable' | tee \
-#    /etc/apt/sources.list.d/docker.list"; \
-#
-## Nvidia docker repo. Don`t forget to check link if u use another distro version.
-#    in-target /bin/sh -c "curl -sL https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add - && \
-#    curl -s -L https://nvidia.github.io/nvidia-docker/debian11/nvidia-docker.list | tee /etc/apt/sources.list.d/nvidia-docker.list"; \
-#
-## Docker-compose install.
-#    in-target /bin/sh -c "curl -sL \
-#    https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-Linux-x86_64 -o /usr/local/bin/docker-compose"; \
-#    in-target /bin/sh -c "chmod +x /usr/local/bin/docker-compose"; \
-#
-#    in-target /bin/sh -c "apt update"; \
-#    in-target /bin/sh -c "apt install -y docker-ce nvidia-docker2 nvidia-container-toolkit"; \
-#    in-target /bin/sh -c "groupadd docker"; \
-#    in-target /bin/sh -c "usermod -aG docker niias"; \
-#
-## Install Docker Modules for Python.
-#    in-target /bin/sh -c "pip3 install docker";
-#
-#################################################################################
+d-i preseed/late_command string \
+
+#   Download post_cmd.sh script.
+    in-target /bin/sh -c "curl -sL \
+        https://raw.githubusercontent.com/itomilin/debian11_preseed/main/post_cmd.sh \
+        -o /root/post_cmd.sh && chmod +x /root/post_cmd.sh"; \
+    in-target /bin/bash -c "/root/post_cmd.sh 'tomilin'";
+################################################################################
 
 
 ################################ ENDDO #########################################
@@ -314,4 +225,3 @@ d-i cdrom-detect/eject             boolean true
 d-i debian-installer/exit/halt     boolean false
 d-i debian-installer/exit/poweroff boolean false
 ################################################################################
-
