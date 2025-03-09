@@ -1,0 +1,194 @@
+d-i preseed/early_command string kill-all-dhcp; netcfg
+
+################################ Locale ########################################
+d-i debconf/language                string en_US:en
+
+d-i debian-installer/locale         select en_US.UTF-8
+d-i debian-installer/language       string en_US:en
+d-i debian-installer/country        string RU
+d-i localechooser/supported-locales multiselect en_US.UTF-8,ru_RU.UTF-8
+################################################################################
+
+
+################################ Firmware ######################################
+d-i hw-detect/load_firmware boolean true
+################################################################################
+
+
+################################ Keyboard ######################################
+# extra language
+# d-i keyboard-configuration/toggle     select Caps Lock
+# d-i keyboard-configuration/optionscode string grp:caps_toggle,grp_led:scroll
+# d-i keyboard-configuration/layoutcode string us,ru
+
+d-i keyboard-configuration/xkb-keymap select us
+d-i keyboard-configuration/layoutcode string us
+d-i keyboard-configuration/modelcode  string pc105
+
+d-i keyboard-configuration/ctrl_alt_bksp              boolean false
+d-i keyboard-configuration/unsupported_config_options boolean true
+d-i keyboard-configuration/unsupported_config_layout  boolean true # ?
+################################################################################
+
+
+################################ Networking ####################################
+# Static IPv4 and DHCP
+# If DHCP is disabled, an address will need to be entered through the installer.
+# for some reason, it is not being taken from the preseed file.
+
+# d-i netcfg/disable_autoconfig boolean true
+d-i netcfg/choose_interface   select  auto
+d-i netcfg/dhcp_failed        note
+d-i netcfg/dhcp_options       select  Configure network manually
+d-i netcfg/get_ipaddress      string  192.168.10.101
+d-i netcfg/get_netmask        string  255.255.255.0
+d-i netcfg/get_gateway        string  192.168.10.1
+d-i netcfg/get_nameservers    string  192.168.10.1,8.8.8.8
+d-i netcfg/confirm_static     boolean true
+
+d-i netcfg/get_domain   string
+d-i netcfg/get_hostname string worker1-kvm
+d-i netcfg/hostname     string worker1-kvm
+################################################################################
+
+
+################################# REPOS ########################################
+d-i mirror/protocol       select http
+d-i mirror/country        string RU
+d-i mirror/http/hostname  string deb.debian.org
+d-i mirror/http/directory string /debian/
+d-i mirror/http/proxy     string
+d-i mirror/suite          select stable
+################################################################################
+
+
+################################ USERS #########################################
+# SUPERUSER
+d-i passwd/root-login            boolean true
+d-i passwd/make-user             boolean true
+d-i passwd/root-password-crypted password $6$/oNW5oWAZO2umNur$rhDbI/42fimIhZmc0.H185bhiHs.CLr/MeI1uZ8g4phNaXRmaVg5nY4Ycw..ObGgzS8/srvw75oq3xmxnRGQQ0
+
+# USER
+d-i passwd/user-fullname         string   worker1
+d-i passwd/username              string   worker1
+d-i passwd/user-password-crypted password $6$.vT.FjYY.kRzLBWu$e4K7NDXoEFy7bBcBN/e7yzTdr9yJ0Eq3iEmlaxN3U808WGMUPsk9hMTPdxaKu.erx1EDNcfcf1vINXiclIO4K/
+
+# GROUPS
+d-i passwd/user-default-groups string audio cdrom dip video plugdev \
+                                      netdev scanner bluetooth \
+                                      systemd-journal dialout
+################################################################################
+
+
+################################ TIMEZONE ######################################
+d-i time/zone              string  Europe/Moscow
+d-i clock-setup/ntp-server string  0.debian.pool.ntp.org
+d-i clock-setup/ntp        boolean true
+################################################################################
+
+
+################################ PATRTITIONING #################################
+# Force UEFI installation.
+d-i partman-efi/non_efi_system boolean true
+
+d-i partman-basicfilesystems/choose_label  string gpt
+d-i partman-basicfilesystems/default_label string gpt
+d-i partman-partitioning/choose_label      string gpt
+d-i partman-partitioning/default_label     string gpt
+d-i partman/choose_label                   string gpt
+d-i partman/default_label                  string gpt
+
+# Substitution of the first disk from the list (for example: /dev/sda).
+d-i partman/early_command string              \
+    BOOT_DEV=$(list-devices disk | head -1) ; \
+    debconf-set partman-auto/disk $BOOT_DEV
+
+# EXT4
+d-i partman-auto/method string regular
+
+# TODO: LVM
+#d-i partman-auto/method string lvm
+# Removal of old partitioning
+#d-i partman-lvm/device_remove_lvm boolean true
+
+# basic partitioning:
+d-i partman-auto/choose_recipe select atomic
+d-i partman-auto/expert_recipe string \
+    
+    51200 30  51200 ext4 \
+        $primary{ }                   \
+        label{ root }                 \
+        method{ format }              \
+        format{ }                     \
+        use_filesystem{ }             \
+        filesystem{ ext4 }            \
+        options/noatime{ noatime }    \
+        options/discard{ discard }    \
+        mountpoint{ / }               \
+    . 
+
+# Auto confirm uncomment to apply it.
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition                     select  finish
+d-i partman/confirm                              boolean true
+d-i partman/confirm_nooverwrite                  boolean true
+
+# Skip question about not having swap partition.
+partman-basicfilesystems partman-basicfilesystems/no_swap boolean false
+################################################################################
+
+
+################################ SOURCES #######################################
+d-i apt-setup/non-free boolean true
+d-i apt-setup/contrib  boolean true
+
+d-i apt-setup/use_mirror      boolean true
+#d-i apt-setup/services-select multiselect security, updates
+d-i apt-setup/services-select multiselect updates
+
+d-i apt-setup/security_host                string  security.debian.org
+d-i debian-installer/allow_unauthenticated boolean false
+################################################################################
+
+
+################################ ADDITIONAL ####################################
+# BASE UTILITIES
+tasksel tasksel/first multiselect ssh-server
+
+# BASE PACKAGES
+d-i pkgsel/include string vim \
+                          curl \
+                          bash-completion \
+                          lsb-release
+
+d-i popularity-contest/participate boolean false
+d-i pkgsel/upgrade                 select  full-upgrade
+################################################################################
+
+
+################################ DISABLE_GRUB ##################################
+
+d-i grub-installer/only_debian   boolean false
+d-i grub-installer/with_other_os boolean false
+# To install to the primary device (assuming it is not a USB stick):
+d-i grub-installer/bootdev       string  default
+
+################################################################################
+
+
+################################ POST_INSTALL ##################################
+d-i preseed/late_command string \
+    in-target curl -sL https://raw.githubusercontent.com/itomilin/debian11_preseed/main/post_cmd_kvm.sh -o /root/post_cmd_kvm.sh; \
+    in-target chmod +x /root/post_cmd_kvm.sh; \
+    in-target /root/post_cmd_kvm.sh '192.168.10' '101' > /root/post_cmd.log 2>&1
+    
+################################################################################
+
+
+################################ ENDDO #########################################
+d-i finish-install/reboot_in_progress      note
+
+d-i cdrom-detect/eject             boolean true
+d-i debian-installer/exit/halt     boolean false
+d-i debian-installer/exit/poweroff boolean false
+################################################################################
